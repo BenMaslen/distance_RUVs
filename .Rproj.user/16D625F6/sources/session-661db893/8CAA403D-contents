@@ -1,0 +1,17 @@
+library(dplyr)
+
+
+WA_dat_CY_MI_DA = read.csv("data/WA_dat_CY_MI_DA_filt.csv")
+
+
+param_dat = WA_dat_CY_MI_DA %>% group_by(Family_Genus_Species) %>%
+  summarise(height_buffer=min(height_buffer),left_trunc_gamma_min=min(left_trunc_gamma_min))
+  
+param_dat$min_theta = 51.99647
+param_dat$min_gamma = 13.71204
+param_dat$cam_height = 0.35
+
+
+write.csv(param_dat,"results/paramater_ests.csv")
+
+

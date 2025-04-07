@@ -1,0 +1,92 @@
+#Check brownian motion
+set.seed(12345)
+overall_population_mean = 100
+pop_disp = 4
+N_vids = 10
+R_max = 15
+theta_diff = 60
+gamma_diff = 60
+vid_length = 60*60
+skipper = 60
+N_stops = vid_length/skipper
+
+
+N_sims = 1
+imp_sd = 5
+
+
+z_max = 1.5
+area = 100*100
+speed = 10
+N_stops = 1000
+N_pop_true = 1000
+
+ 
+
+x = list()
+y = list()
+z = list()
+dist_xy = list()
+dist_x = list()
+dist_y = list()
+
+for (k in (1:N_stops)){
+  if(k==1){
+    x[[k]] = runif(N_pop_true,min=0,max=sqrt(area))
+    y[[k]] = runif(N_pop_true,min=0,max=sqrt(area))
+    z[[k]] = runif(N_pop_true,min=0,max=z_max)
+  }else{
+    z[[k]] = z[[k-1]]
+    x[[k]] = x[[k-1]] + rnorm(N_pop_true,0,speed/(sqrt(pi)/sqrt(2)))    #move in absolute value on average by speed m/m
+    y[[k]] = y[[k-1]] + rnorm(N_pop_true,0,speed/(sqrt(pi)/sqrt(2)))    #move in absolute value on average by speed m/m
+    
+    dist_xy[[k-1]] = sqrt((x[[k-1]] - x[[k]])^2 + (y[[k-1]] - y[[k]])^2)
+    dist_x[[k-1]] = sqrt((x[[k-1]] - x[[k]])^2)
+    dist_y[[k-1]] = sqrt((y[[k-1]] - y[[k]])^2)
+
+    for(l in (1:N_pop_true)){   #reflect points if we move outside the boundary
+      if(x[[k]][l]<0){
+        x[[k]][l] <- abs(x[[k]][l])
+      }
+      if(y[[k]][l]<0){
+        y[[k]][l] <- abs(y[[k]][l])
+      }
+      
+      if(x[[k]][l]>sqrt(area)){
+        x[[k]][l] <- 2*sqrt(area)-x[[k]][l]
+      }
+      if(y[[k]][l]>sqrt(area)){
+        y[[k]][l] <- 2*sqrt(area)-y[[k]][l]
+      }
+    }
+  }
+}
+
+
+mean(unlist(dist_xy))
+
+mean(unlist(dist_xy)^2)
+
+#hist(unlist(dist_xy))
+mean(unlist(dist_x))*sqrt(2)
+mean(unlist(dist_x))
+#hist(unlist(dist_x))
+mean(unlist(dist_y))*sqrt(2)
+#hist(unlist(dist_y))
+
+sqrt(mean(unlist(dist_x))^2 + var(unlist(dist_x)) + 
+       mean(unlist(dist_y))^2 + var(unlist(dist_y)))
+
+#plot where points are
+xy_all = data.frame(x_all = unlist(x), y_all = unlist(y))
+
+ggplot(xy_all,aes(x=x_all,y=y_all)) + geom_point(alpha=0.1) + theme_classic()
+
+ggplot(xy_all,aes(y=y_all)) + geom_histogram(breaks = seq(0,100,5)) + theme_classic() 
+
+ggplot(xy_all,aes(x=x_all)) + geom_histogram(breaks = seq(0,100,5)) + theme_classic()
+
+
+
+
+

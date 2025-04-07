@@ -1,0 +1,24 @@
+{
+    "id": "7D7F282A",
+    "path": "~/phd/distance_RUVs/code/fig_1_sims_data_prep.R",
+    "project_path": "code/fig_1_sims_data_prep.R",
+    "type": "r_source",
+    "hash": "2303234949",
+    "contents": "",
+    "dirty": false,
+    "created": 1743989148521.0,
+    "source_on_save": false,
+    "relative_order": 2,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1742900176,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1742900176,
+    "read_only": false,
+    "read_only_alternatives": []
+}

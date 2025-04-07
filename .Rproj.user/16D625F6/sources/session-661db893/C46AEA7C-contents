@@ -1,0 +1,185 @@
+#Camera trap distance sampling example
+
+#install.packages("Distance")
+library(Distance)
+
+DuikerCameraTraps <- read.csv("data/DaytimeDistances.txt",header=TRUE, sep="\t")
+DuikerCameraTraps$Area <- DuikerCameraTraps$Area / (1000*1000)
+DuikerCameraTraps$object <- NA
+DuikerCameraTraps$object[!is.na(DuikerCameraTraps$distance)] <- 1:sum(!is.na(DuikerCameraTraps$distance))
+
+#Note - need to create NA distance entries for cameras which detected no fish at all!
+DuikerCameraTraps[is.na(DuikerCameraTraps$distance),]
+
+sum(!is.na(DuikerCameraTraps$distance))
+
+table(DuikerCameraTraps$Sample.Label)
+
+
+breakpoints <- c(seq(0,8,1), 10, 12, 15, 21)
+hist(DuikerCameraTraps$distance, breaks=breakpoints, main="Peak activity data set",
+     xlab="Radial distance (m)")
+
+
+
+trunc.list <- list(left=2, right=15)
+mybreaks <- c(seq(2,8,1), 10, 12, 15)
+conversion <- convert_units("meter", NULL, "square kilometer") #make sure to do this!
+#First is what you measured, and second is area you are interested in estimating abundance
+
+
+
+# Data set -> DuikerCameraTraps, 
+
+# point traect (leave as this) -> transect = "point", 
+
+# key detection function, either half-normal, 
+# hazard-rate or uniform -> key="unif"
+
+# Adjustment to detection function (one of three) -> adjustment = "cos"
+
+# number of adjumstment terms to fit (note this automatically
+# selects based on AIC but we should not rely on this - do it manually
+# via QAIC and c values) -> nadj=1
+
+# distance and area metrics to convert to -> convert_units = conversion
+
+# breakpoints - not applicatble leave NULL -> cutpoints = mybreaks, 
+
+# truncation points (will have to do this based on 
+# viewing angle of camera) truncation = trunc.list
+
+
+
+uni1 <- ds(DuikerCameraTraps, transect = "point", key="unif", adjustment = "cos",
+           nadj=1, convert_units = conversion,
+           cutpoints = mybreaks, truncation = trunc.list)
+uni2 <- ds(DuikerCameraTraps, transect = "point", key="unif", adjustment = "cos",
+           nadj=2, convert_units = conversion,
+           cutpoints = mybreaks, truncation = trunc.list)
+uni3 <- ds(DuikerCameraTraps, transect = "point", key="unif", adjustment = "cos",
+           nadj=3, convert_units = conversion,
+           cutpoints = mybreaks, truncation = trunc.list)
+
+hn0 <- ds(DuikerCameraTraps, transect = "point", key="hn", adjustment = NULL,
+          convert_units = conversion, cutpoints = mybreaks, truncation = trunc.list)
+hn1 <- ds(DuikerCameraTraps, transect = "point", key="hn", adjustment = "cos",
+          nadj=1, convert_units = conversion,
+          cutpoints = mybreaks, truncation = trunc.list)
+hn2 <- ds(DuikerCameraTraps, transect = "point", key="hn", adjustment = "cos",
+          nadj=2, convert_units = conversion,
+          cutpoints = mybreaks, truncation = trunc.list)
+
+hr0 <- ds(DuikerCameraTraps, transect = "point", key="hr", adjustment = NULL,
+          convert_units = conversion, cutpoints = mybreaks, truncation = trunc.list)
+hr1 <- ds(DuikerCameraTraps, transect = "point", key="hr", adjustment = "poly",
+          nadj=1, convert_units = conversion,
+          cutpoints = mybreaks, truncation = trunc.list)
+
+
+
+#number of adjumstment terms to fit (note this automatically
+# selects based on AIC but we should not rely on this - do it manually
+# via QAIC and c values)
+
+
+#uni3 looks the best!
+QAIC(uni1,uni2,uni3)
+
+#hn1 looks the best!
+QAIC(hn0,hn1,hn2)
+
+#hr0 looks the best!
+QAIC(hr0,hr1)
+
+
+#now we select based on the c values
+chats <- chi2_select(uni3, hn1, hr0)$criteria
+modnames <- unlist(lapply(list(uni3, hn1, hr0), function(x) x$ddf$name.message))
+results <- data.frame(modnames, chats)
+results.sort <- results[order(results$chats),]
+results.sort
+
+#so we are going with uni3!
+
+
+# Effective detection radius - need to understand more what this is!
+
+
+p_a <- uni3$ddf$fitted[1] #p_a
+w <- range(mybreaks)[2] - range(mybreaks)[1] #range of difference values detected - or the cutpoints
+rho <- sqrt(p_a * w^2) #effective detection radius
+
+
+par(mfrow=c(1,2))
+plot(uni3, main="Daytime activity", xlab="Distance (m)",
+     showpoints=FALSE, lwd=3, xlim=c(0, 15)) #detection probability
+plot(uni3, main="Daytime activity", xlab="Distance (m)", pdf=TRUE,
+     showpoints=FALSE, lwd=3, xlim=c(0, 15)) #Daytime activity
+
+
+#Density estimate
+
+viewangle <- 42 # degrees
+samfrac <- viewangle / 360
+
+#distance function -> uni3, 
+
+# data in flatfile format -> flatfile=DuikerCameraTraps, 
+#### Make sure to name the following columns:
+#distance# observed distance to object
+
+#object# a unique identifier for each observation (only required when using dht2)
+
+#Sample.Label# identifier for the sample (transect id)
+
+#Effort# effort for this transect (e.g. line transect length or number of times point transect was visited)
+
+#Region.Label# label for a given stratum (see below)
+
+#Area# area of the strata
+
+#⁠When the row represents a transect without
+#observations,⁠ distanc e⁠and any other observation-specific covariate
+#s (including⁠size⁠and detection function covariates) tae tl ue⁠NA'.
+
+DuikerCameraTraps[is.na(DuikerCameraTraps$distance),]
+
+#formulat for stratification structure - need to look more into this
+#strat_formula = ~1,
+
+#proportion of the transect covered
+#sample_fraction = samfrac, 
+
+#enctounter rate variance estimator to be used
+#er_est = "P2", 
+
+#not applicable for our data!
+#multipliers = avail,
+
+#unit conversion
+#convert_units = conversion
+
+
+peak.uni.dens <- dht2(uni3, flatfile=DuikerCameraTraps, strat_formula = ~1,
+                      sample_fraction = samfrac, er_est = "P2",
+                      convert_units = conversion)
+print(peak.uni.dens, report="density")
+
+
+mysummary <- function(ests, fit){
+  return(data.frame(Label = ests$individuals$D$Label,
+                    Dhat = ests$individuals$D$Estimate))
+}
+
+
+
+
+
+
+
+
+
+
+
+

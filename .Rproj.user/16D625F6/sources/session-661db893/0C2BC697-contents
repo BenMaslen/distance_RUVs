@@ -1,0 +1,376 @@
+library(tidyverse)
+
+
+# Set the path to your folder containing distance CSV files
+folder_path <- "data/distance_delta_sims_5/"
+#folder_path <- "data/batch_test/"
+
+# List all CSV files in the folder
+csv_files <- list.files(path = folder_path, pattern = "\\.csv$", full.names = TRUE)
+
+# Read and bind all CSV files into one dataframe
+combined_df <- csv_files %>%
+  lapply(read.csv) %>%
+  bind_rows()
+
+
+distance_res_sum <- combined_df %>% 
+  group_by(imp_sd,speed,overall_population_mean,
+  N_vids,R_max,theta_diff,gamma_diff,
+  vid_length,skipper,N_stops,z_max,area,
+  N_sims,schooling) %>%
+  summarise(abundance_mean=mean(abundance_estimates),abundance_var=var(abundance_estimates),
+            #abundance_estimates_boostrap_bias_mean = mean(abundance_estimates_boostrap_bias),
+            #abundance_no_truncation = mean(abundance_no_truncation),
+            #abundance_no_truncation_boostrap_bias = mean(abundance_no_truncation_boostrap_bias),
+            LCI=mean(LCI_delta),UCI=mean(UCI_delta),CI_width=mean(CI_width_delta),coverage=mean(coverage_prob_delta),
+            sumcount=mean(sumcount),n_sims=length(abundance_estimates),
+            MaxN_max=mean(MaxN_max), MaxN_mean=mean(MaxN_mean), MeanCount = mean(MeanCount)
+            )
+
+#filter out <1000 nsims 
+distance_res_sum <- distance_res_sum %>% filter(n_sims==1000)
+
+
+distance_res_sum$speed_fc = factor(distance_res_sum$speed)
+distance_res_sum$overall_population_mean_fc = factor(distance_res_sum$overall_population_mean)
+distance_res_sum$N_vids_fc = factor(distance_res_sum$N_vids)
+distance_res_sum$schooling_fc = factor(distance_res_sum$schooling)
+distance_res_sum$imp_sd_fc = factor(distance_res_sum$imp_sd)
+distance_res_sum$area_fc = factor(distance_res_sum$area)
+distance_res_sum$skipper_fc = factor(distance_res_sum$skipper)
+distance_res_sum$skipper_fc = factor(distance_res_sum$skipper)
+distance_res_sum$skipper_fc = factor(distance_res_sum$skipper)
+
+
+
+View(distance_res_sum)
+
+#N_vids
+
+#by population mean
+
+ggplot(distance_res_sum %>% filter(speed==10,imp_sd==4.08539,schooling==1,theta_diff==51.99647,gamma_diff==26.56505118),
+       aes(x=N_vids,y=coverage,colour=sumcount)) + geom_point() +
+  theme_classic()
+
+ggplot(distance_res_sum %>% filter(speed==10,imp_sd==4.08539,schooling==1,theta_diff==51.99647,gamma_diff==26.56505118),
+       aes(x=N_vids,y=coverage,colour=sumcount)) + geom_point() + 
+  theme_classic()
+
+ggplot(distance_res_sum %>% filter(speed==10,imp_sd==4.08539,schooling==1,theta_diff==51.99647,gamma_diff==26.56505118),
+       aes(x=N_vids,y=coverage,colour=overall_population_mean_fc)) + geom_point() + 
+  theme_classic()
+
+ggplot(distance_res_sum %>% filter(speed==10,imp_sd==4.08539,schooling==1,theta_diff==51.99647,gamma_diff==26.56505118),
+       aes(x=N_vids,y=coverage,colour=overall_population_mean_fc)) + geom_point() + ylim(0.91,0.975) + 
+  theme_classic()
+
+ggplot(distance_res_sum %>% filter(speed==10,imp_sd==4.08539,schooling==1,theta_diff==51.99647,gamma_diff==26.56505118),
+       aes(x=N_vids,y=CI_width,colour=sumcount)) + geom_point() + 
+  theme_classic() + scale_y_log10(limits=c(NA,20000)) + scale_x_log10()
+
+ggplot(distance_res_sum %>% filter(speed==10,imp_sd==4.08539,schooling==1,theta_diff==51.99647,gamma_diff==26.56505118),
+       aes(x=N_vids,y=CI_width,colour=overall_population_mean_fc)) + geom_point() + 
+  theme_classic() + scale_y_log10(limits=c(NA,20000)) + scale_x_log10()
+
+#by speed
+
+ggplot(distance_res_sum %>% filter(overall_population_mean==1000,imp_sd==4.08539,schooling==1,theta_diff==51.99647,gamma_diff==26.56505118),
+       aes(x=N_vids,y=coverage,colour=sumcount)) + geom_point() + 
+  theme_classic()
+
+ggplot(distance_res_sum %>% filter(overall_population_mean==1000,imp_sd==4.08539,schooling==1,theta_diff==51.99647,gamma_diff==26.56505118),
+       aes(x=N_vids,y=coverage,colour=speed_fc)) + geom_point() + 
+  theme_classic()
+
+ggplot(distance_res_sum %>% filter(overall_population_mean==1000,imp_sd==4.08539,schooling==1,theta_diff==51.99647,gamma_diff==26.56505118),
+       aes(x=N_vids,y=CI_width,colour=sumcount)) + geom_point() + 
+  theme_classic() + scale_y_log10(limits=c(NA,20000)) + scale_x_log10()
+
+ggplot(distance_res_sum %>% filter(overall_population_mean==1000,imp_sd==4.08539,schooling==1,theta_diff==51.99647,gamma_diff==26.56505118),
+       aes(x=N_vids,y=CI_width,colour=speed_fc)) + geom_point() + 
+  theme_classic() + scale_y_log10(limits=c(NA,20000)) + scale_x_log10()
+
+#by visibility
+
+ggplot(distance_res_sum %>% filter(overall_population_mean==1000,speed==10,imp_sd %in% c(4.08539, 8.17078),schooling==1,theta_diff==51.99647,gamma_diff==26.56505118),
+       aes(x=N_vids,y=coverage,colour=sumcount)) + geom_point() + 
+  theme_classic()
+
+ggplot(distance_res_sum %>% filter(overall_population_mean==1000,imp_sd %in% c(4.08539, 8.17078),speed==10,schooling==1,theta_diff==51.99647,gamma_diff==26.56505118),
+       aes(x=N_vids,y=coverage,colour=imp_sd_fc)) + geom_point() + 
+  theme_classic() + ylim(0.87,NA)
+
+ggplot(distance_res_sum %>% filter(overall_population_mean==1000,speed==10,imp_sd %in% c(4.08539, 8.17078),schooling==1,theta_diff==51.99647,gamma_diff==26.56505118),
+       aes(x=N_vids,y=CI_width,colour=sumcount)) + geom_point() + 
+  theme_classic() + scale_y_log10(limits=c(NA,20000)) + scale_x_log10()
+
+ggplot(distance_res_sum %>% filter(overall_population_mean==1000,speed==10,imp_sd %in% c(4.08539, 8.17078),schooling==1,theta_diff==51.99647,gamma_diff==26.56505118),
+       aes(x=N_vids,y=CI_width,colour=imp_sd_fc)) + geom_point() + 
+  theme_classic() + scale_y_log10(limits=c(NA,20000)) + scale_x_log10()
+
+#by schooling
+
+ggplot(distance_res_sum %>% filter(overall_population_mean==1000,imp_sd==4.08539,speed==10,theta_diff==51.99647,gamma_diff==26.56505118),
+       aes(x=N_vids,y=coverage,colour=sumcount)) + geom_point() + 
+  theme_classic()
+
+ggplot(distance_res_sum %>% filter(overall_population_mean==1000,imp_sd==4.08539,speed==10,theta_diff==51.99647,gamma_diff==26.56505118),
+       aes(x=N_vids,y=coverage,colour=schooling_fc)) + geom_point() + 
+  theme_classic()
+
+ggplot(distance_res_sum %>% filter(overall_population_mean==1000,imp_sd==4.08539,speed==10,theta_diff==51.99647,gamma_diff==26.56505118),
+       aes(x=N_vids,y=CI_width,colour=sumcount)) + geom_point() + 
+  theme_classic() + scale_y_log10(limits=c(NA,20000)) + scale_x_log10()
+
+ggplot(distance_res_sum %>% filter(overall_population_mean==1000,imp_sd==4.08539,speed==10,theta_diff==51.99647,gamma_diff==26.56505118),
+       aes(x=N_vids,y=CI_width,colour=schooling_fc)) + geom_point() + 
+  theme_classic() + scale_y_log10(limits=c(NA,20000)) + scale_x_log10()
+
+
+
+ 
+
+
+#Plot meancount, maxN, sumcount
+
+#visibility
+
+Vis_comp = combined_df %>% filter(overall_population_mean==1000,schooling==1,speed==10,N_vids==10,theta_diff==51.99647,gamma_diff==26.56505118) %>% dplyr::select(MaxN_max,MaxN_mean,MeanCount,imp_sd,abundance_estimates,overall_population_mean)
+
+Vis_comp$overall_population_mean_fc = factor(Vis_comp$overall_population_mean)
+Vis_comp$imp_sd_fc = factor(Vis_comp$imp_sd)
+Vis_comp$imp_sd_fc
+
+
+table(Vis_comp$imp_sd_fc)
+
+ggplot(Vis_comp,
+       aes(x=imp_sd_fc,y=abundance_estimates,fill=imp_sd_fc)) + geom_boxplot() + 
+  theme_classic() +scale_y_log10()
+ggplot(Vis_comp,
+       aes(x=imp_sd_fc,y=MaxN_mean,fill=imp_sd_fc)) + geom_boxplot() + 
+  theme_classic() +scale_y_log10()
+ggplot(Vis_comp,
+       aes(x=imp_sd_fc,y=MeanCount,fill=imp_sd_fc)) + geom_boxplot() + 
+  theme_classic() +scale_y_log10()
+
+
+#gamma
+
+Vis_comp_gamma = combined_df %>% filter(overall_population_mean==1000,schooling==1,speed==10,N_vids==10,imp_sd==4.08539,theta_diff==51.99647) %>% dplyr::select(MaxN_max,MaxN_mean,MeanCount,gamma_diff,abundance_estimates,overall_population_mean)
+
+Vis_comp_gamma$overall_population_mean_fc = factor(Vis_comp_gamma$overall_population_mean)
+Vis_comp_gamma$gamma_diff_fc = factor(Vis_comp_gamma$gamma_diff)
+
+table(Vis_comp_gamma$gamma_diff_fc)
+
+ggplot(Vis_comp_gamma,
+       aes(x=gamma_diff_fc,y=abundance_estimates,fill=gamma_diff_fc)) + geom_boxplot() + 
+  theme_classic() +scale_y_log10()
+ggplot(Vis_comp_gamma,
+       aes(x=gamma_diff_fc,y=MaxN_mean,fill=gamma_diff_fc)) + geom_boxplot() + 
+  theme_classic()
+ggplot(Vis_comp_gamma,
+       aes(x=gamma_diff_fc,y=MeanCount,fill=gamma_diff_fc)) + geom_boxplot() + 
+  theme_classic() +scale_y_log10()
+
+#theta
+
+Vis_comp_theta = combined_df %>% filter(overall_population_mean==1000,schooling==1,speed==10,N_vids==10,imp_sd==4.08539,gamma_diff==26.56505118) %>% dplyr::select(MaxN_max,MaxN_mean,MeanCount,theta_diff,abundance_estimates,overall_population_mean)
+
+Vis_comp_theta$overall_population_mean_fc = factor(Vis_comp_theta$overall_population_mean)
+Vis_comp_theta$theta_diff_fc = factor(Vis_comp_theta$theta_diff)
+
+table(Vis_comp_theta$theta_diff_fc)
+
+ggplot(Vis_comp_theta,
+       aes(x=theta_diff_fc,y=abundance_estimates,fill=theta_diff_fc)) + geom_boxplot() + 
+  theme_classic() +scale_y_log10()
+ggplot(Vis_comp_theta,
+       aes(x=theta_diff_fc,y=MaxN_mean,fill=theta_diff_fc)) + geom_boxplot() + 
+  theme_classic()
+ggplot(Vis_comp_theta,
+       aes(x=theta_diff_fc,y=MeanCount,fill=theta_diff_fc)) + geom_boxplot() + 
+  theme_classic() +scale_y_log10()
+
+
+
+
+
+
+
+
+
+
+
+# 
+# #area
+# 
+# ggplot(distance_res_sum %>% filter(overall_population_mean %in% c(300,500,1000),imp_sd==4.08539,speed==10,schooling==1,skipper==30),
+#        aes(x=N_vids,y=coverage,colour=sumcount)) + geom_point() + 
+#   theme_classic()
+# 
+# ggplot(distance_res_sum %>% filter(overall_population_mean %in% c(300,500,1000),imp_sd==4.08539,speed==10,schooling==1,skipper==30),
+#        aes(x=N_vids,y=coverage,colour=area_fc)) + geom_point() + 
+#   theme_classic()
+# 
+# ggplot(distance_res_sum %>% filter(overall_population_mean %in% c(300,500,1000),imp_sd==4.08539,speed==10,schooling==1,skipper==30),
+#        aes(x=N_vids,y=CI_width,colour=sumcount)) + geom_point() + 
+#   theme_classic() + ylim(0,3000)
+# 
+# ggplot(distance_res_sum %>% filter(overall_population_mean %in% c(300,500,1000),imp_sd==4.08539,speed==10,schooling==1,skipper==30),
+#        aes(x=N_vids,y=CI_width,colour=schooling_fc)) + geom_point() + 
+#   theme_classic() + ylim(0,3000)
+# 
+# 
+# 
+# #frame rate
+# 
+# ggplot(distance_res_sum %>% filter(overall_population_mean==500,imp_sd==4.08539,speed==10,schooling==1,area==10000),
+#        aes(x=N_vids,y=coverage,colour=sumcount)) + geom_point() + 
+#   theme_classic()
+# 
+# ggplot(distance_res_sum %>% filter(overall_population_mean==500,imp_sd==4.08539,speed==10,schooling==1,area==10000),
+#        aes(x=N_vids,y=coverage,colour=skipper_fc)) + geom_point() + 
+#   theme_classic()
+# 
+# ggplot(distance_res_sum %>% filter(overall_population_mean==500,imp_sd==4.08539,speed==10,schooling==1,area==10000),
+#        aes(x=N_vids,y=CI_width,colour=sumcount)) + geom_point() + 
+#   theme_classic() + ylim(0,3000)
+# 
+# ggplot(distance_res_sum %>% filter(overall_population_mean==500,imp_sd==4.08539,speed==10,schooling==1,area==10000),
+#        aes(x=N_vids,y=CI_width,colour=schooling_fc)) + geom_point() + 
+#   theme_classic() + ylim(0,3000)
+# 
+# 
+
+
+
+
+
+
+
+
+rggplot(distance_res_sum %>% filter(overall_population_mean==100,area==10000,imp_sd==5,speed==10),
+       aes(x=sumcount,y=CI_width,colour=N_vids)) + geom_point() +
+  theme_classic() + scale_y_log10() + scale_x_log10()
+
+
+ggplot(distance_res_sum %>% filter(overall_population_mean==100,area==10000,imp_sd==5,speed==10),
+       aes(x=sumcount,y=CI_width,colour=N_vids)) + geom_point() +
+  theme_classic() 
+
+ggplot(distance_res_sum %>% filter(overall_population_mean==100,area==10000,imp_sd==5,speed==10),
+       aes(x=N_vids,y=abundance_mean-overall_population_mean,colour=sumcount)) + geom_point() +
+  theme_classic()
+
+ggplot(distance_res_sum %>% filter(overall_population_mean==100,area==10000,imp_sd==5,speed==10,N_vids>4),
+       aes(x=N_vids,y=abundance_estimates_boostrap_bias_mean-overall_population_mean,colour=sumcount)) + geom_point() +
+  theme_classic()
+
+
+#overall_population_mean
+
+ggplot(distance_res_sum %>% filter(N_vids==10,area==10000,imp_sd==5,speed==10),
+       aes(x=overall_population_mean,y=coverage,colour=sumcount)) + geom_point() +
+  theme_classic()
+
+ggplot(distance_res_sum %>% filter(N_vids==10,area==10000,imp_sd==5,speed==10),
+       aes(x=sumcount,y=CI_width/overall_population_mean,colour=overall_population_mean)) + geom_point() +
+  theme_classic() + scale_y_log10() + scale_x_log10()
+
+ggplot(distance_res_sum %>% filter(N_vids==10,area==10000,imp_sd==5,speed==10),
+       aes(x=overall_population_mean,y=abundance_mean-overall_population_mean,colour=sumcount)) + geom_point() +
+  theme_classic()
+
+ggplot(distance_res_sum %>% filter(N_vids==10,area==10000,imp_sd==5,speed==10,overall_population_mean>=50),
+       aes(x=overall_population_mean,y=abundance_estimates_boostrap_bias_mean-overall_population_mean,colour=sumcount)) + geom_point() +
+  theme_classic()
+
+#area
+
+ggplot(distance_res_sum %>% filter(area/overall_population_mean==100,N_vids==10,imp_sd==5,speed==10),
+       aes(x=area,y=coverage,colour=sumcount)) + geom_point() +
+  theme_classic()
+
+ggplot(distance_res_sum %>% filter(area/overall_population_mean==100,N_vids==10,imp_sd==5,speed==10),
+       aes(x=area,y=CI_width,colour=sumcount)) + geom_point() +
+  theme_classic()
+
+ggplot(distance_res_sum %>% filter(area/overall_population_mean==100,N_vids==10,imp_sd==5,speed==10),
+       aes(x=area,y=abundance_mean-overall_population_mean,colour=sumcount)) + geom_point() +
+  theme_classic()
+
+
+#visibility
+
+ggplot(distance_res_sum %>% filter(overall_population_mean==100,area==10000,N_vids==10,speed==10),
+       aes(x=imp_sd,y=coverage,colour=sumcount)) + geom_point() +
+  theme_classic()
+
+ggplot(distance_res_sum %>% filter(overall_population_mean==100,area==10000,N_vids==10,speed==10),
+       aes(x=imp_sd,y=CI_width,colour=sumcount)) + geom_point() +
+  theme_classic()
+
+ggplot(distance_res_sum %>% filter(overall_population_mean==100,area==10000,N_vids==10,speed==10),
+       aes(x=imp_sd,y=abundance_mean-overall_population_mean,colour=sumcount)) + geom_point() +
+  theme_classic()
+
+ggplot(distance_res_sum %>% filter(overall_population_mean==100,area==10000,N_vids==10,speed==10,imp_sd>3),
+       aes(x=imp_sd,y=abundance_estimates_boostrap_bias_mean-overall_population_mean,colour=sumcount)) + geom_point() +
+  theme_classic()
+
+#speed
+
+ggplot(distance_res_sum %>% filter(overall_population_mean==100,area==10000,imp_sd==5,N_vids==10),
+       aes(x=speed,y=coverage,colour=sumcount)) + geom_point() +
+  theme_classic()
+
+ggplot(distance_res_sum %>% filter(overall_population_mean==100,area==10000,imp_sd==5,N_vids==10),
+       aes(x=speed,y=CI_width,colour=sumcount)) + geom_point() +
+  theme_classic()
+
+ggplot(distance_res_sum %>% filter(overall_population_mean==100,area==10000,imp_sd==5,N_vids==10),
+       aes(x=speed,y=abundance_mean-overall_population_mean,colour=sumcount)) + geom_point() +
+  theme_classic()
+
+ggplot(distance_res_sum %>% filter(overall_population_mean==100,area==10000,imp_sd==5,N_vids==10,speed>2),
+       aes(x=speed,y=abundance_estimates_boostrap_bias_mean-overall_population_mean,colour=sumcount)) + geom_point() +
+  theme_classic()
+
+
+
+
+
+
+
+ggplot(distance_res_sum,aes(x=sumcount,y=coverage,colour=speed_fc,shape=overall_population_mean_fc,size=N_vids_fc)) + geom_point() +
+  theme_classic()
+
+ggplot(distance_res_sum,aes(x=N_vids,y=coverage,colour=speed,shape=overall_population_mean)) + geom_point() +
+  theme_classic()
+
+ggplot(distance_res_sum,aes(x=overall_population_mean,y=coverage,colour=speed,shape=N_vids)) + geom_point() +
+  theme_classic()
+
+ggplot(distance_res_sum,aes(x=speed,y=coverage,colour=N_vids,shape=overall_population_mean)) + geom_point() +
+  theme_classic()
+
+
+
+ggplot(distance_res_sum,aes(x=sumcount,y=CI_width,colour=speed,shape=overall_population_mean,size=N_vids)) + geom_point() +
+  theme_classic()
+
+ggplot(distance_res_sum,aes(x=N_vids,y=CI_width,colour=speed,shape=overall_population_mean)) + geom_point() +
+  theme_classic()
+
+ggplot(distance_res_sum,aes(x=overall_population_mean,y=CI_width,colour=speed,shape=N_vids)) + geom_point() +
+  theme_classic()
+
+ggplot(distance_res_sum,aes(x=speed,y=CI_width,colour=N_vids,shape=overall_population_mean)) + geom_point() +
+  theme_classic()
+
+
+

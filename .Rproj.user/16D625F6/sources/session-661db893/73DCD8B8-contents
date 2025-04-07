@@ -1,0 +1,187 @@
+#Distance sampling simulations
+
+library(tidyverse)
+library(MASS)
+library(purrr)
+library(Distance)
+
+set.seed(12345)
+overall_population_mean = 100
+pop_disp = 4
+N_vids = 5
+R_max = 15
+theta_diff = 60
+gamma_diff = 60
+vid_length = 60*60
+skipper = 60*5
+N_stops = vid_length/skipper
+z_max = 1.5
+area = 100*100
+N_sims = 5
+imp_sd = 5
+file_name = "results/simulation_sims_5_vids_5_pop_100.csv"
+
+abundance_estimates = rep(NA,N_sims)
+sim_id = rep(NA,N_sims)
+
+sim_dat = data.frame(abundance_estimates,sim_id)
+
+
+for (m in 1:N_sims){
+
+  sim_dat$sim_id[m] <- m
+  
+
+  x_vids = runif(N_vids,min=R_max,max=sqrt(area)-R_max)
+  y_vids = runif(N_vids,min=R_max,max=sqrt(area)-R_max)
+  z_vids = 0
+  theta_min = runif(N_vids,min=0,max=360-theta_diff)
+  theta_max = theta_min + theta_diff
+  
+  
+  vids_dat = data.frame(x_vids,y_vids,z_vids,theta_min,theta_max)
+  
+  
+  #N_pop_true = rnegbin(1,overall_population_mean,pop_disp)
+  N_pop_true = overall_population_mean
+  
+  
+  for (i in (1:N_vids)){
+    for (k in (1:N_stops)){
+      x = runif(N_pop_true,min=0,max=sqrt(area))
+      y = runif(N_pop_true,min=0,max=sqrt(area))
+      z = runif(N_pop_true,min=0,max=z_max)
+      
+      pop_dat = data.frame(x,y,z)
+      
+      d_temp = sqrt((vids_dat$x_vids[i]-pop_dat$x)^2 + (vids_dat$y_vids[i]-pop_dat$y)^2 + (pop_dat$z)^2)
+      d_temp_flat = sqrt((vids_dat$x_vids[i]-pop_dat$x)^2 + (vids_dat$y_vids[i]-pop_dat$y)^2)
+      
+      theta_temp = rep(NA,N_pop_true)
+      for (j in c(1:N_pop_true)){
+        if((pop_dat$x[j] - vids_dat$x_vids[i]) > 0 &  (pop_dat$y[j] - vids_dat$y_vids[i]) > 0){ #appears in quadrant 1
+          theta_temp[j] = atan((pop_dat$x[j] - vids_dat$x_vids[1])/(pop_dat$y[j] - vids_dat$y_vids[1]))*180/pi
+        }else if((pop_dat$x[j] - vids_dat$x_vids[i]) > 0 &  (pop_dat$y[j] - vids_dat$y_vids[i]) < 0){ #appears in quadrant 2
+          theta_temp[j] = 180 + atan((pop_dat$x[j] - vids_dat$x_vids[1])/(pop_dat$y[j] - vids_dat$y_vids[1]))*180/pi
+        }else if((pop_dat$x[j] - vids_dat$x_vids[i]) < 0 &  (pop_dat$y[j] - vids_dat$y_vids[i]) < 0){ #appears in quadrant 3
+          theta_temp[j] = 180 + atan((pop_dat$x[j] - vids_dat$x_vids[1])/(pop_dat$y[j] - vids_dat$y_vids[1]))*180/pi
+        }else if((pop_dat$x[j] - vids_dat$x_vids[i]) < 0 &  (pop_dat$y[j] - vids_dat$y_vids[i]) > 0){ #appears in quadrant 4
+          theta_temp[j] = 360 + atan((pop_dat$x[j] - vids_dat$x_vids[1])/(pop_dat$y[j] - vids_dat$y_vids[1]))*180/pi
+        }
+      }
+      gamma_temp = atan(pop_dat$z/(sqrt((vids_dat$x_vids[i]-pop_dat$x)^2 + (vids_dat$y_vids[i]-pop_dat$y)^2)))*180/pi
+      in_vid = d_temp <= R_max & theta_temp>=theta_min[i] & theta_temp<=theta_max[i] & gamma_temp <= gamma_diff
+      in_angle = theta_temp>=theta_min[i] & theta_temp<=theta_max[i] & gamma_temp <= gamma_diff
+      
+      if(i==1&k==1){
+        dist_dat = data.frame(Sample.Label=i,step_id=k,distance=d_temp_flat,
+                              distance_flat=d_temp_flat,Effort=N_stops,in_vid,
+                              in_angle,Region.Label="Sims",Area=area,N_pop=N_pop_true)
+      }else{
+        dist_dat_temp = data.frame(Sample.Label=i,step_id=k,distance=d_temp_flat,
+                                   distance_flat=d_temp_flat,Effort=N_stops,in_vid,
+                                   in_angle,Region.Label="Sims",Area=area,N_pop=N_pop_true)
+        dist_dat = rbind(dist_dat,dist_dat_temp)
+      }
+    }
+  }
+  
+  
+  
+  dist_dat_in_angle = dist_dat %>% filter(in_angle)
+  
+  #set the imperfect detection
+  
+  # 
+  # norm_x = 0:30
+  
+  dist_prob_fun <- function(x){
+    dnorm(x, mean = 0, sd = imp_sd, log = FALSE)/dnorm(0, mean = 0, sd = imp_sd, log = FALSE)
+  }
+  
+  # norm_y = dist_prob_fun(norm_x)
+  # imp_func_dat <- data.frame(norm_x,norm_y)
+  # 
+  # ggplot(imp_func_dat,aes(x=norm_x,y=norm_y)) + geom_line() + 
+  #   xlab("Distance") + ylab("Probability of detection") + 
+  #   theme_classic()
+  
+  dist_dat_in_angle$detected = NA
+  
+  for (l in 1:length(dist_dat_in_angle$distance)){
+    dist_dat_in_angle$detected[l] = rbinom(1,1,dist_prob_fun(dist_dat_in_angle$distance[l]))
+  }
+  
+  dist_dat_detected <- dist_dat_in_angle  %>% filter(detected==1)
+  
+  #Histogram of detections by distance
+  # ggplot(dist_dat_detected,aes(x=distance)) + 
+  #   geom_histogram(binwidth = 2) + ylab("Detections") + 
+  #   xlab("Distance") + theme_classic()
+  
+  
+  #clean data
+  dist_dat_detected$Sample.Label <- factor(dist_dat_detected$Sample.Label)
+  dist_dat_detected <- dist_dat_detected %>% dplyr::select(-detected)
+  
+  #vids with no fish seen
+  Empty_vids = (1:N_vids)[!(factor(1:N_vids) %in% levels(dist_dat_detected$Sample.Label))]
+  
+  #append them into the dataset
+  
+  dist_dat_empty = data.frame(Sample.Label=factor(Empty_vids),step_id=NA,distance=NA,
+                              distance_flat=NA,Effort=N_stops,in_vid=FALSE,
+                              in_angle=FALSE,Region.Label="Sims",Area=area,N_pop=N_pop_true)
+  
+  
+  dist_dat_final = rbind(dist_dat_detected,dist_dat_empty)
+  
+  
+  #generate object id
+  dist_dat_final$object <- NA
+  dist_dat_final$object[!is.na(dist_dat_final$distance)] <- 1:sum(!is.na(dist_dat_final$distance))
+  
+  
+  #analyse the data
+  
+  trunc.list <- list(left=z_max/tan(gamma_diff*pi/180), right=R_max)
+  conversion <- convert_units("meter", NULL, "square meter")
+  
+  hn0 <- ds(dist_dat_final, transect = "point", key="hn", adjustment = NULL,
+            convert_units = conversion, truncation = trunc.list)
+  
+  
+  
+  # Effective detection radius - need to understand more what this is!
+  
+  # p_a <- hn0$ddf$fitted[1] #p_a
+  # w <- R_max-z_max/tan(gamma_diff*pi/180) #range of difference values detected - or the cutpoints
+  # rho <- sqrt(p_a * w^2) #effective detection radius
+  # rho
+  
+  
+  # par(mfrow=c(1,2))
+  # plot(hn0, xlab="Distance (m)",
+  #      showpoints=FALSE, lwd=3, xlim=c(0, 15)) #detection probability
+  # plot(hn0, xlab="Distance (m)", pdf=TRUE,
+  #      showpoints=FALSE, lwd=3, xlim=c(0, 15)) #Daytime activity
+  # 
+  
+  #denstity estimation
+  
+  samfrac <- theta_diff / 360
+  
+  
+  peak.uni.dens <- dht2(hn0, flatfile=dist_dat_final, strat_formula = ~1,
+                        sample_fraction = samfrac, er_est = "P2")
+  # print(peak.uni.dens, report="density")
+  # 
+  # peak.uni.dens
+  
+  sim_dat$abundance_estimates[m] <- peak.uni.dens$Abundance
+}
+
+
+write.csv(sim_dat,file_name)
+
+

@@ -1,0 +1,26 @@
+{
+    "id": "24C8EEBE",
+    "path": "~/phd/distance_RUVs/code/MaxN_MeanCount_WA.R",
+    "project_path": "code/MaxN_MeanCount_WA.R",
+    "type": "r_source",
+    "hash": "711747273",
+    "contents": "",
+    "dirty": false,
+    "created": 1743989165018.0,
+    "source_on_save": false,
+    "relative_order": 4,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "32,0",
+        "scrollLine": "11"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1743989275,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1743989275125,
+    "read_only": false,
+    "read_only_alternatives": []
+}

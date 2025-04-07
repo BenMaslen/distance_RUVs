@@ -1,0 +1,225 @@
+#calculate distance on manually created data set trial
+library(Distance)
+library(tidyverse)
+
+
+#read in data
+solitary_dat = read.csv("data/distance_dat_solitary_test.csv")
+head(solitary_dat)
+
+#camera height above ground (mm)
+
+cam_height = 200
+
+#step one - find distance from camera to perpendicular point on the seafloor,
+#as well as distance from the point to the seafloor
+
+
+ground_points <- solitary_dat %>% filter(Reference == "GROUND") %>% dplyr::select(X..mm.,Z..mm.,Y..mm.)
+
+
+# Function to calculate the plane equation coefficients
+calculate_plane <- function(p1, p2, p3) {
+  v1 <- p2 - p1    
+  v2 <- p3 - p1
+  normal <- c(
+    v1[2] * v2[3] - v1[3] * v2[2],
+    v1[3] * v2[1] - v1[1] * v2[3],
+    v1[1] * v2[2] - v1[2] * v2[1]
+  ) #normal vector to the plane
+  a <- normal[1]
+  b <- normal[2]
+  c <- normal[3]
+  d <- - (a * p1[1] + b * p1[2] + c * p1[3])
+  return(c(a, b, c, d))
+}
+
+# Function to project a point onto a plane
+project_point_onto_plane <- function(point, plane_coefficients) {
+  a <- plane_coefficients[1]
+  b <- plane_coefficients[2]
+  c <- plane_coefficients[3]
+  d <- plane_coefficients[4]
+  
+  # Calculate the normal vector from the point to the plane
+  t <- -(a * point[1] + b * point[2] + c * point[3] + d) / (a^2 + b^2 + c^2)
+  
+  # Calculate the projection
+  projected_point <- point + t * c(a, b, c)
+  
+  return(projected_point)
+}
+
+# Function to find distance from a point onto a plane
+dist_point_onto_plane <- function(point, plane_coefficients) {
+  a <- plane_coefficients[1]
+  b <- plane_coefficients[2]
+  c <- plane_coefficients[3]
+  d <- plane_coefficients[4]
+  
+  # Calculate the normal vector from the point to the plane
+  dist <- abs(-(a * point[1] + b * point[2] + c * point[3] + d)) / sqrt((a^2 + b^2 + c^2))
+  
+  return(dist)
+}
+
+# Function to calculate the angle between three points
+calculate_angle <- function(p1, p2, p3) {
+  # Vectors from p2 to p1 and p2 to p3
+  v1 <- p1 - p2
+  v2 <- p3 - p2
+  
+  # Dot product of v1 and v2
+  dot_product <- sum(v1 * v2)
+  
+  # Magnitudes of v1 and v2
+  mag_v1 <- sqrt(sum(v1^2))
+  mag_v2 <- sqrt(sum(v2^2))
+  
+  # Cosine of the angle
+  cos_theta <- dot_product / (mag_v1 * mag_v2)
+  
+  # Angle in radians
+  angle_radians <- acos(cos_theta)
+  
+  # Convert angle to degrees
+  angle_degrees <- angle_radians * (180 / pi)
+  
+  return(angle_degrees)
+}
+
+
+
+# ground points
+p1 <- unlist(c(0, 0, -cam_height))
+p2 <- unlist(ground_points[1,])
+p3 <- unlist(ground_points[2,])
+
+# Calculate the plane equation coefficients
+plane_coefficients <- calculate_plane(p1, p2, p3)
+
+
+#find the height and distance of each fish to the camera along the seafloor
+solitary_dat$height = NA
+solitary_dat$plane_dist = NA
+solitary_dat$original_dist = NA
+
+for (i in 1:nrow(solitary_dat)){
+  new_point = c(solitary_dat$X..mm.[i],solitary_dat$Z..mm.[i],solitary_dat$Y..mm.[i])
+  
+  # Project the fourth point onto the plane
+  projected_point <- project_point_onto_plane(new_point, plane_coefficients)
+  
+  #find the distance (m) along the plane to this point
+  solitary_dat$plane_dist[i] = sqrt(sum((projected_point)^2))/1000
+
+  solitary_dat$original_dist[i] = sqrt(sum(new_point^2))/1000
+  
+  #perpendicular distance (m) from the point to the plane
+  solitary_dat$height[i] <- dist_point_onto_plane(new_point, plane_coefficients)/1000
+}
+
+#find vertical angle gamma
+
+#reference point 
+top_point <- solitary_dat %>% filter(Reference == "TOP") %>% dplyr::select(X..mm.,Z..mm.,Y..mm.)
+#top_point <- solitary_dat %>% filter(Reference == "TOP_alt2") %>% dplyr::select(X..mm.,Z..mm.,Y..mm.)
+
+#projected point
+projected_point_top <- project_point_onto_plane(unlist(top_point), plane_coefficients)
+
+#vertical angle 
+gamma_angle <- calculate_angle(unlist(top_point), c(0,0,0), projected_point_top)
+gamma_angle
+
+
+#find horizontal angle theta
+
+#reference point 
+left_point <- solitary_dat %>% filter(Reference == "LEFT") %>% dplyr::select(X..mm.,Z..mm.,Y..mm.)
+right_point <- solitary_dat %>% filter(Reference == "RIGHT") %>% dplyr::select(X..mm.,Z..mm.,Y..mm.)
+#right_point <- solitary_dat %>% filter(Reference == "RIGHT_alt1") %>% dplyr::select(X..mm.,Z..mm.,Y..mm.)
+
+#projected point
+projected_point_left <- project_point_onto_plane(unlist(left_point), plane_coefficients)
+projected_point_right <- project_point_onto_plane(unlist(right_point), plane_coefficients)
+
+#vertical angle 
+theta_angle <- calculate_angle(unlist(projected_point_left), c(0,0,0), unlist(projected_point_right))
+theta_angle
+
+
+#find height threshold and truncation distance
+
+
+#ALL FISH: 
+
+solitary_dat_fish = solitary_dat %>% filter(Family!="FAMILY")
+
+par(mfrow=c(1,1))
+hist(solitary_dat_fish$height)
+max(solitary_dat_fish$height)
+
+#max height of 2.5m
+max_height = 2
+
+#find left truncation value
+left_trunc = max_height/tan(gamma_angle*pi/180)
+
+hist(solitary_dat_fish$plane_dist)
+
+table(solitary_dat_fish$plane_dist>left_trunc)
+#we will lose 50 of our observations!
+
+
+#lets go down to species level!
+
+
+#Labridae	Coris	picta
+
+solitary_dat_picta = solitary_dat %>% filter(Species=="picta")
+
+par(mfrow=c(1,1))
+hist(solitary_dat_picta$height)
+max(solitary_dat_picta$height)
+
+#max height of 2.5m
+max_height = 1.5
+
+#find left truncation value
+left_trunc = max_height/tan(gamma_angle*pi/180)
+left_trunc
+
+hist(solitary_dat_picta$plane_dist)
+
+table(solitary_dat_picta$plane_dist>left_trunc)
+#we will only lose 4 of our observations!
+
+#Sparidae	Pagrus	auratus
+
+solitary_dat_auratus = solitary_dat %>% filter(Species=="auratus")
+
+par(mfrow=c(1,1))
+hist(solitary_dat_auratus$height)
+max(solitary_dat_auratus$height)
+
+#max height of 2.5m
+max_height = 1.5
+
+#find left truncation value
+left_trunc = max_height/tan(gamma_angle*pi/180)
+left_trunc
+
+hist(solitary_dat_auratus$plane_dist)
+
+table(solitary_dat_auratus$plane_dist>left_trunc)
+#we will only lose 5 of our observations!
+
+
+
+
+
+
+
+
+

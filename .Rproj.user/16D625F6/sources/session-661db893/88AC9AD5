@@ -1,0 +1,24 @@
+{
+    "id": "88AC9AD5",
+    "path": "~/phd/distance_RUVs/code/RUV_dist_func_vignette.R",
+    "project_path": "code/RUV_dist_func_vignette.R",
+    "type": "r_source",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1743989493234.0,
+    "source_on_save": false,
+    "relative_order": 7,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1743987829,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1743987829,
+    "read_only": false,
+    "read_only_alternatives": []
+}

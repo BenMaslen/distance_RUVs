@@ -1,0 +1,262 @@
+library(tidyverse)
+
+
+# Set the path to your folder containing distance CSV files
+folder_path <- "data/simple_sims/"
+folder_path <- "data/simple_sims_no_angle/"
+folder_path <- "data/simple_sims_no_angle_2_vids/"
+folder_path <- "data/simple_sims_no_angle_lower_fish_abund/"
+folder_path <- "data/simple_sims_gamma/"
+folder_path <- "data/simple_sims_speed/"
+folder_path <- "data/bootstrap_bias_all/"
+folder_path <- "data/bootstrap_bias_abs_dist/"
+folder_path <- "data/bootstrap_bias_t_boot/"
+folder_path <- "data/bootstrap_bias_t_boot_20/"
+#folder_path <- "data/batch_test/"
+
+# List all CSV files in the folder
+csv_files <- list.files(path = folder_path, pattern = "\\.csv$", full.names = TRUE)
+
+# Read and bind all CSV files into one dataframe
+combined_df <- csv_files %>%
+  lapply(read.csv) %>%
+  bind_rows()
+
+combined_df$coverage_prob_t_alt = (combined_df$LCI_t_boot - combined_df$abundance_estimates + combined_df$abundance_estimates_boostrap_t_bias)<combined_df$overall_population_mean & (combined_df$UCI_t_boot - combined_df$abundance_estimates + combined_df$abundance_estimates_boostrap_t_bias)>combined_df$overall_population_mean
+
+
+
+distance_res_sum <- combined_df %>% 
+  group_by(overall_population_mean) %>%
+  summarise(abundance_mean=mean(abundance_estimates),abundance_var=var(abundance_estimates),
+            abundance_estimates_boostrap_bias_mean = mean(abundance_estimates_boostrap_bias),
+            abundance_estimates_boostrap_bias_var = var(abundance_estimates_boostrap_bias),
+            abundance_estimates_boostrap_bias_t_mean = mean(abundance_estimates_boostrap_t_bias),#
+            abundance_estimates_boostrap_bias_t_var = var(abundance_estimates_boostrap_t_bias),#
+            #abundance_perfect_detection = mean(abundance_perfect_detection,na.rm=T),#
+            #abundance_perfect_detection_var = var(abundance_perfect_detection,na.rm=T),#
+            LCI_delta=mean(LCI_delta), UCI_delta=mean(UCI_delta), CI_width_delta = mean(CI_width_delta), coverage_delta = mean(coverage_prob_delta),#
+            LCI_t=mean(LCI_t_boot), UCI_t=mean(UCI_t_boot), CI_width_t = mean(CI_width_t_boot), coverage_t = mean(coverage_prob_t_boot),#
+            LCI=mean(LCI_ests),UCI=mean(UCI_ests),CI_width=mean(CI_width),coverage=mean(coverage_prob),
+            coverage_t_alt = mean(coverage_prob_t_alt),#
+            sumcount=mean(sumcount),n_sims=length(abundance_estimates),
+  )
+
+
+#View(distance_res_sum)
+
+#Estimated abundance
+distance_res_sum$abundance_mean
+
+#confidence interval based on simulations
+c(distance_res_sum$abundance_mean- 1.96*sqrt(distance_res_sum$abundance_var/distance_res_sum$n_sims),distance_res_sum$abundance_mean+ 1.96*sqrt(distance_res_sum$abundance_var/distance_res_sum$n_sims))
+
+#Estimated abundance accounting for bootstrap bias
+distance_res_sum$abundance_estimates_boostrap_bias_mean
+
+#confidence interval based on simulations
+c(distance_res_sum$abundance_estimates_boostrap_bias_mean- 1.96*sqrt(distance_res_sum$abundance_estimates_boostrap_bias_var/distance_res_sum$n_sims),distance_res_sum$abundance_estimates_boostrap_bias_mean+ 1.96*sqrt(distance_res_sum$abundance_estimates_boostrap_bias_var/distance_res_sum$n_sims))
+
+#Estimated abundance accounting for bootstrap bias
+distance_res_sum$abundance_estimates_boostrap_bias_t_mean
+
+#confidence interval based on simulations
+c(distance_res_sum$abundance_estimates_boostrap_bias_t_mean- 1.96*sqrt(distance_res_sum$abundance_estimates_boostrap_bias_t_var/distance_res_sum$n_sims),distance_res_sum$abundance_estimates_boostrap_bias_t_mean+ 1.96*sqrt(distance_res_sum$abundance_estimates_boostrap_bias_t_var/distance_res_sum$n_sims))
+
+#Estimated abundance
+distance_res_sum$abundance_perfect_detection
+
+#confidence interval based on simulations
+c(distance_res_sum$abundance_perfect_detection- 1.96*sqrt(var(combined_df$abundance_perfect_detection,na.rm=T)/distance_res_sum$n_sims),distance_res_sum$abundance_perfect_detection+ 1.96*sqrt(var(combined_df$abundance_perfect_detection,na.rm=T)/distance_res_sum$n_sims))
+
+#delta has better coverage but wider confidence intervals
+distance_res_sum$coverage_delta
+distance_res_sum$coverage
+distance_res_sum$coverage_t
+#distance_res_sum$coverage_t_alt
+distance_res_sum$CI_width_delta
+distance_res_sum$CI_width
+distance_res_sum$CI_width_t
+
+
+distance_res_sum20 <- distance_res_sum
+
+
+
+#View(distance_res_sum)
+
+#Estimated abundance
+distance_res_sum20$abundance_mean
+
+#confidence interval based on simulations
+c(distance_res_sum$abundance_mean- 1.96*sqrt(distance_res_sum$abundance_var/distance_res_sum$n_sims),distance_res_sum$abundance_mean+ 1.96*sqrt(distance_res_sum$abundance_var/distance_res_sum$n_sims))
+
+#Estimated abundance accounting for bootstrap bias
+distance_res_sum20$abundance_estimates_boostrap_bias_mean
+
+#confidence interval based on simulations
+c(distance_res_sum$abundance_estimates_boostrap_bias_mean- 1.96*sqrt(distance_res_sum$abundance_estimates_boostrap_bias_var/distance_res_sum$n_sims),distance_res_sum$abundance_estimates_boostrap_bias_mean+ 1.96*sqrt(distance_res_sum$abundance_estimates_boostrap_bias_var/distance_res_sum$n_sims))
+
+
+#Estimated abundance accounting for bootstrap bias
+distance_res_sum20$abundance_estimates_boostrap_bias_t_mean
+
+#confidence interval based on simulations
+c(distance_res_sum$abundance_estimates_boostrap_bias_t_mean- 1.96*sqrt(distance_res_sum$abundance_estimates_boostrap_bias_t_var/distance_res_sum$n_sims),distance_res_sum$abundance_estimates_boostrap_bias_t_mean+ 1.96*sqrt(distance_res_sum$abundance_estimates_boostrap_bias_t_var/distance_res_sum$n_sims))
+
+#Estimated abundance
+distance_res_sum$abundance_perfect_detection
+
+#confidence interval based on simulations
+c(distance_res_sum$abundance_perfect_detection- 1.96*sqrt(var(combined_df$abundance_perfect_detection,na.rm=T)/distance_res_sum$n_sims),distance_res_sum$abundance_perfect_detection+ 1.96*sqrt(var(combined_df$abundance_perfect_detection,na.rm=T)/distance_res_sum$n_sims))
+
+#delta has better coverage but wider confidence intervals
+distance_res_sum20$coverage_delta
+distance_res_sum20$coverage
+distance_res_sum20$coverage_t
+distance_res_sum20$coverage_t_alt
+distance_res_sum20$CI_width_delta
+distance_res_sum20$CI_width
+distance_res_sum20$CI_width_t
+
+
+
+
+
+
+#filter out <1000 nsims 
+distance_res_sum <- distance_res_sum %>% filter(n_sims==1000)
+
+
+distance_res_sum$speed_fc = factor(distance_res_sum$speed)
+distance_res_sum$overall_population_mean_fc = factor(distance_res_sum$overall_population_mean)
+distance_res_sum$N_vids_fc = factor(distance_res_sum$N_vids)
+
+View(distance_res_sum)
+
+#N_vids
+
+ggplot(distance_res_sum %>% filter(overall_population_mean==100,area==10000,imp_sd==5,speed==10),
+       aes(x=N_vids,y=coverage,colour=sumcount)) + geom_point() +
+  theme_classic()
+
+ggplot(distance_res_sum %>% filter(overall_population_mean==100,area==10000,imp_sd==5,speed==10),
+       aes(x=sumcount,y=CI_width,colour=N_vids)) + geom_point() +
+  theme_classic() + scale_y_log10() + scale_x_log10()
+
+
+ggplot(distance_res_sum %>% filter(overall_population_mean==100,area==10000,imp_sd==5,speed==10),
+       aes(x=sumcount,y=CI_width,colour=N_vids)) + geom_point() +
+  theme_classic() 
+
+ggplot(distance_res_sum %>% filter(overall_population_mean==100,area==10000,imp_sd==5,speed==10),
+       aes(x=N_vids,y=abundance_mean-overall_population_mean,colour=sumcount)) + geom_point() +
+  theme_classic()
+
+ggplot(distance_res_sum %>% filter(overall_population_mean==100,area==10000,imp_sd==5,speed==10,N_vids>4),
+       aes(x=N_vids,y=abundance_estimates_boostrap_bias_mean-overall_population_mean,colour=sumcount)) + geom_point() +
+  theme_classic()
+
+#overall_population_mean
+
+ggplot(distance_res_sum %>% filter(N_vids==10,area==10000,imp_sd==5,speed==10),
+       aes(x=overall_population_mean,y=coverage,colour=sumcount)) + geom_point() +
+  theme_classic()
+
+ggplot(distance_res_sum %>% filter(N_vids==10,area==10000,imp_sd==5,speed==10),
+       aes(x=sumcount,y=CI_width/overall_population_mean,colour=overall_population_mean)) + geom_point() +
+  theme_classic() + scale_y_log10() + scale_x_log10()
+
+ggplot(distance_res_sum %>% filter(N_vids==10,area==10000,imp_sd==5,speed==10),
+       aes(x=overall_population_mean,y=abundance_mean-overall_population_mean,colour=sumcount)) + geom_point() +
+  theme_classic()
+
+ggplot(distance_res_sum %>% filter(N_vids==10,area==10000,imp_sd==5,speed==10,overall_population_mean>=50),
+       aes(x=overall_population_mean,y=abundance_estimates_boostrap_bias_mean-overall_population_mean,colour=sumcount)) + geom_point() +
+  theme_classic()
+
+#area
+
+ggplot(distance_res_sum %>% filter(area/overall_population_mean==100,N_vids==10,imp_sd==5,speed==10),
+       aes(x=area,y=coverage,colour=sumcount)) + geom_point() +
+  theme_classic()
+
+ggplot(distance_res_sum %>% filter(area/overall_population_mean==100,N_vids==10,imp_sd==5,speed==10),
+       aes(x=area,y=CI_width,colour=sumcount)) + geom_point() +
+  theme_classic()
+
+ggplot(distance_res_sum %>% filter(area/overall_population_mean==100,N_vids==10,imp_sd==5,speed==10),
+       aes(x=area,y=abundance_mean-overall_population_mean,colour=sumcount)) + geom_point() +
+  theme_classic()
+
+
+#visibility
+
+ggplot(distance_res_sum %>% filter(overall_population_mean==100,area==10000,N_vids==10,speed==10),
+       aes(x=imp_sd,y=coverage,colour=sumcount)) + geom_point() +
+  theme_classic()
+
+ggplot(distance_res_sum %>% filter(overall_population_mean==100,area==10000,N_vids==10,speed==10),
+       aes(x=imp_sd,y=CI_width,colour=sumcount)) + geom_point() +
+  theme_classic()
+
+ggplot(distance_res_sum %>% filter(overall_population_mean==100,area==10000,N_vids==10,speed==10),
+       aes(x=imp_sd,y=abundance_mean-overall_population_mean,colour=sumcount)) + geom_point() +
+  theme_classic()
+
+ggplot(distance_res_sum %>% filter(overall_population_mean==100,area==10000,N_vids==10,speed==10,imp_sd>3),
+       aes(x=imp_sd,y=abundance_estimates_boostrap_bias_mean-overall_population_mean,colour=sumcount)) + geom_point() +
+  theme_classic()
+
+#speed
+
+ggplot(distance_res_sum %>% filter(overall_population_mean==100,area==10000,imp_sd==5,N_vids==10),
+       aes(x=speed,y=coverage,colour=sumcount)) + geom_point() +
+  theme_classic()
+
+ggplot(distance_res_sum %>% filter(overall_population_mean==100,area==10000,imp_sd==5,N_vids==10),
+       aes(x=speed,y=CI_width,colour=sumcount)) + geom_point() +
+  theme_classic()
+
+ggplot(distance_res_sum %>% filter(overall_population_mean==100,area==10000,imp_sd==5,N_vids==10),
+       aes(x=speed,y=abundance_mean-overall_population_mean,colour=sumcount)) + geom_point() +
+  theme_classic()
+
+ggplot(distance_res_sum %>% filter(overall_population_mean==100,area==10000,imp_sd==5,N_vids==10,speed>2),
+       aes(x=speed,y=abundance_estimates_boostrap_bias_mean-overall_population_mean,colour=sumcount)) + geom_point() +
+  theme_classic()
+
+
+
+
+
+
+
+ggplot(distance_res_sum,aes(x=sumcount,y=coverage,colour=speed_fc,shape=overall_population_mean_fc,size=N_vids_fc)) + geom_point() +
+  theme_classic()
+
+ggplot(distance_res_sum,aes(x=N_vids,y=coverage,colour=speed,shape=overall_population_mean)) + geom_point() +
+  theme_classic()
+
+ggplot(distance_res_sum,aes(x=overall_population_mean,y=coverage,colour=speed,shape=N_vids)) + geom_point() +
+  theme_classic()
+
+ggplot(distance_res_sum,aes(x=speed,y=coverage,colour=N_vids,shape=overall_population_mean)) + geom_point() +
+  theme_classic()
+
+
+
+ggplot(distance_res_sum,aes(x=sumcount,y=CI_width,colour=speed,shape=overall_population_mean,size=N_vids)) + geom_point() +
+  theme_classic()
+
+ggplot(distance_res_sum,aes(x=N_vids,y=CI_width,colour=speed,shape=overall_population_mean)) + geom_point() +
+  theme_classic()
+
+ggplot(distance_res_sum,aes(x=overall_population_mean,y=CI_width,colour=speed,shape=N_vids)) + geom_point() +
+  theme_classic()
+
+ggplot(distance_res_sum,aes(x=speed,y=CI_width,colour=N_vids,shape=overall_population_mean)) + geom_point() +
+  theme_classic()
+
+
+

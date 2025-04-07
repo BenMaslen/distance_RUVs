@@ -1,0 +1,517 @@
+library(dplyr)
+library(Distance)
+
+WA_dat_CY_MI_DA = read.csv("data/WA_dat_CY_MI_DA.csv")
+
+#data prep
+cam_height = 350
+
+WA_dat_CY_MI_DA$distance = WA_dat_CY_MI_DA$plane_dist
+
+
+WA_dat_distance = data.frame(Region.Label=WA_dat_CY_MI_DA$site_habitat,Area=0,
+                             Sample.Label=WA_dat_CY_MI_DA$OpCode,distance=WA_dat_CY_MI_DA$distance,
+                             Effort=40,species=WA_dat_CY_MI_DA$Family_Genus_Species,object=as.factor(1:length(WA_dat_CY_MI_DA$OpCode)))
+
+
+
+#start wiht labridae Labridae:Choerodon:cyanodus
+
+WA_dat_distance_labridae = WA_dat_distance %>% filter(species == "Labridae:Choerodon:cyanodus")
+
+#WA_dat_distance_labridae$species_region = factor(WA_dat_distance_labridae$Region.Label):factor(WA_dat_distance_labridae$species)
+
+WA_dat_distance_labridae$object = 1:dim(WA_dat_distance_labridae)[1]
+
+# "Labridae:Choerodon:cyanodus",
+# "Nemipteridae:Scaevius:milii",
+# "Pomacentridae:Dischistodus:darwiniensis"
+
+#fill in empty videos with NAs
+#read in unique video codes
+
+video_codes <- read.csv("data/video_codes.csv")
+
+for (i in 1:dim(video_codes)[1]){
+
+if((video_codes$OpCode[i] %in% WA_dat_distance_labridae$Sample.Label)==FALSE){
+  dist_dat_empty = data.frame(Region.Label=video_codes$site_habitat[i],Area=0,
+                              Sample.Label=video_codes$OpCode[i],distance=NA,
+                              Effort=40,species=NA,
+                              object=NA)
+  WA_dat_distance_labridae = rbind(WA_dat_distance_labridae,dist_dat_empty)
+}
+}
+
+#start analysing
+
+#View(WA_dat_distance_labridae)
+
+hist(WA_dat_distance_labridae$distance)
+max(WA_dat_distance_labridae$distance,na.rm=T)
+
+library(Distance)
+
+left_trunc_dat <- read.csv("data/left_trunc_dat.csv")
+
+trunc.list <- list(left=left_trunc_dat$left_trunc[left_trunc_dat$Family_Genus_Species=="Labridae:Choerodon:cyanodus"], right=6)
+conversion <- convert_units("Metre", NULL, "Hectare")
+
+WA_dat_distance_labridae %>% group_by(Region.Label) %>% summarise(count=sum(distance>0,na.rm=T))
+
+#remove regions with no observations
+WA_dat_distance_labridae <- WA_dat_distance_labridae %>% filter(Region.Label!="SSS", Region.Label!="NOM") 
+
+
+#start model selection
+
+#Do not include uniform as it does not allow for covariates:
+#uni1 <- ds(WA_dat_distance_labridae, transect = "point", key="unif", convert_units = conversion, adjustment = "cos",
+#           nadj=1,truncation = trunc.list)
+#uni2 <- ds(WA_dat_distance_labridae, transect = "point", key="unif", convert_units = conversion, adjustment = "cos",
+#           nadj=2,truncation = trunc.list)
+#uni3 <- ds(WA_dat_distance_labridae, transect = "point", key="unif", convert_units = conversion, adjustment = "cos",
+#           nadj=3,truncation = trunc.list)
+
+#QAIC(uni1,uni2,uni3)
+#choose uni3
+
+hn0 <- ds(WA_dat_distance_labridae, transect = "point", key="hn", convert_units = conversion, adjustment = NULL,
+           formula=~Region.Label,truncation = trunc.list)
+hn1 <- ds(WA_dat_distance_labridae, transect = "point", key="hn", convert_units = conversion, adjustment = "cos",
+           nadj=1,formula=~Region.Label,truncation = trunc.list)
+hn2 <- ds(WA_dat_distance_labridae, transect = "point", key="hn", convert_units = conversion, adjustment = "cos",
+           nadj=2,formula=~Region.Label,truncation = trunc.list)
+
+
+
+QAIC(hn0,hn1,hn2)
+#choose hn0
+
+hr0 <- ds(WA_dat_distance_labridae, transect = "point", key="hr", convert_units = conversion, adjustment = NULL,
+           formula=~Region.Label,truncation = trunc.list)
+hr1 <- ds(WA_dat_distance_labridae, transect = "point", key="hr", convert_units = conversion, adjustment = "poly",
+           nadj=1,formula=~Region.Label,truncation = trunc.list)
+
+QAIC(hr0,hr1)
+#choose hr1
+
+#now use c values to choose between the models
+chats <- chi2_select(hn0, hr1)$criteria
+modnames <- unlist(lapply(list(hn0, hr1), function(x) x$ddf$name.message))
+results <- data.frame(modnames, chats)
+results.sort <- results[order(results$chats),]
+results.sort
+
+#choose half normal with no adjustment
+
+chosen_model_labridae = hn0
+
+#look at help(QAIC) for paper to cite on model selection method = How et al (2019), also howe et al 2017 from the vingete)
+
+
+summary(chosen_model_labridae)
+
+plot(chosen_model_labridae, showpoints=FALSE, main="Labridae\nspecies as covariate")
+add.df.covar.line(chosen_model, data=data.frame(Region.Label="JYA"), 
+                  lwd=3, lty=1, col="blue")
+add.df.covar.line(chosen_model, data=data.frame(Region.Label="MOA"), 
+                  lwd=3, lty=1, col="darkgreen")
+add.df.covar.line(chosen_model, data=data.frame(Region.Label="MOS"), 
+                  lwd=3, lty=1, col="brown")
+add.df.covar.line(chosen_model, data=data.frame(Region.Label="NOM"), 
+                  lwd=3, lty=1, col="salmon")
+add.df.covar.line(chosen_model, data=data.frame(Region.Label="SSC"), 
+                  lwd=3, lty=1, col="yellow")
+add.df.covar.line(chosen_model, data=data.frame(Region.Label="SSS"), 
+                  lwd=3, lty=1, col="pink")
+legend("bottom", legend=c("JYA", "MOA", "MOS", "NOM","SSC","SSS"),
+       lwd=3, lty=1, col=c("blue", "darkgreen", "brown", "salmon","yellow","pink"))
+
+
+
+
+
+#mean_theta
+#57.65804 
+
+WA_fish.ests_labridae <- dht2(ddf=chosen_model_labridae, flatfile=WA_dat_distance_labridae,
+                     strat_formula = ~Region.Label, convert_units = conversion,
+                     sample_fraction = 57.65804/360,er_est = "P2",stratification = "geographical")
+
+
+WA_fish.ests_labridae
+
+#bootstrap confidence interval
+mysummary <- function(ests, fit){
+  return(data.frame(Label = ests$individuals$D$Label,
+                    Dhat = ests$individuals$D$Estimate))
+}
+
+n.cores <- parallel::detectCores()
+daytime.boot.uni <- bootdht(model=chosen_model, flatfile=WA_dat_distance_labridae,
+                            resample_transects = TRUE, nboot=500, 
+                            cores = n.cores - 1,
+                            summary_fun=mysummary, sample_fraction = 57.65804/360,
+                            convert_units = conversion)
+
+print(summary(daytime.boot.uni))
+
+daytime.boot.uni %>% group_by(Label) %>% summarise(LCL=quantile(Dhat, probs = c(0.025), na.rm=TRUE),
+                                                   UCL=quantile(Dhat, probs = c(0.975), na.rm=TRUE))
+
+
+#now lets repeat for the other two species
+
+
+#Nemipteridae:Scaevius:milii
+
+WA_dat_distance_milli = WA_dat_distance %>% filter(species == "Nemipteridae:Scaevius:milii")
+
+#WA_dat_distance_labridae$species_region = factor(WA_dat_distance_labridae$Region.Label):factor(WA_dat_distance_labridae$species)
+
+WA_dat_distance_milli$object = 1:dim(WA_dat_distance_milli)[1]
+
+# "Labridae:Choerodon:cyanodus",
+# "Nemipteridae:Scaevius:milii",
+# "Pomacentridae:Dischistodus:darwiniensis"
+
+#fill in empty videos with NAs
+#read in unique video codes
+
+video_codes <- read.csv("data/video_codes.csv")
+
+for (i in 1:dim(video_codes)[1]){
+  
+  if((video_codes$OpCode[i] %in% WA_dat_distance_milli$Sample.Label)==FALSE){
+    dist_dat_empty = data.frame(Region.Label=video_codes$site_habitat[i],Area=0,
+                                Sample.Label=video_codes$OpCode[i],distance=NA,
+                                Effort=40,species=NA,
+                                object=NA)
+    WA_dat_distance_milli = rbind(WA_dat_distance_milli,dist_dat_empty)
+  }
+}
+
+#start analysing
+
+#View(WA_dat_distance_milli)
+
+hist(WA_dat_distance_milli$distance)
+max(WA_dat_distance_milli$distance,na.rm=T)
+
+library(Distance)
+
+left_trunc_dat <- read.csv("data/left_trunc_dat.csv")
+
+trunc.list <- list(left=left_trunc_dat$left_trunc[left_trunc_dat$Family_Genus_Species=="Nemipteridae:Scaevius:milii"], right=6)
+conversion <- convert_units("Metre", NULL, "Hectare")
+WA_dat_distance_milli %>% group_by(Region.Label) %>% summarise(count=sum(distance>0,na.rm=T))
+
+#remove regions with no observations
+WA_dat_distance_milli <- WA_dat_distance_milli %>% filter(Region.Label!="SSC", Region.Label!="NOM",Region.Label!="JYA",Region.Label!="SSS") 
+
+
+#start model selection
+
+
+#uni1 <- ds(WA_dat_distance_milli, transect = "point", key="unif", convert_units = conversion, adjustment = "cos",
+#           nadj=1,truncation = trunc.list)
+#ni2 <- ds(WA_dat_distance_milli, transect = "point", key="unif", convert_units = conversion, adjustment = "cos",
+#           nadj=2,truncation = trunc.list)
+#uni3 <- ds(WA_dat_distance_milli, transect = "point", key="unif", convert_units = conversion, adjustment = "cos",
+#           nadj=3,truncation = trunc.list)
+
+#QAIC(uni1,uni2,uni3)
+#choose uni3
+
+hn0 <- ds(WA_dat_distance_milli, transect = "point", key="hn", convert_units = conversion, adjustment = NULL,
+          formula=~Region.Label,truncation = trunc.list)
+hn1 <- ds(WA_dat_distance_milli, transect = "point", key="hn", convert_units = conversion, adjustment = "cos",
+          nadj=1,formula=~Region.Label,truncation = trunc.list)
+hn2 <- ds(WA_dat_distance_milli, transect = "point", key="hn", convert_units = conversion, adjustment = "cos",
+          nadj=2,formula=~Region.Label,truncation = trunc.list)
+QAIC(hn0,hn1,hn2)
+#choose hn0
+
+hr0 <- ds(WA_dat_distance_milli, transect = "point", key="hr", convert_units = conversion, adjustment = NULL,
+          formula=~Region.Label,truncation = trunc.list)
+hr1 <- ds(WA_dat_distance_milli, transect = "point", key="hr", convert_units = conversion, adjustment = "poly",
+          nadj=1,formula=~Region.Label,truncation = trunc.list)
+
+QAIC(hr0,hr1)
+#choose hr0
+
+#now use c values to choose between the models
+chats <- chi2_select( hn0, hr0)$criteria
+modnames <- unlist(lapply(list( hn0, hr0), function(x) x$ddf$name.message))
+results <- data.frame(modnames, chats)
+results.sort <- results[order(results$chats),]
+results.sort
+
+#choose half normal with no adjustment
+
+chosen_model_milli = hr0
+
+#look at help(QAIC) for paper to cite on model selection method = How et al (2019), also howe et al 2017 from the vingete)
+
+
+summary(chosen_model_milli)
+
+plot(chosen_model_milli, showpoints=FALSE, main="Milli\nspecies as covariate")
+add.df.covar.line(chosen_model_milli, data=data.frame(Region.Label="JYA"), 
+                  lwd=3, lty=1, col="blue")
+add.df.covar.line(chosen_model_milli, data=data.frame(Region.Label="MOA"), 
+                  lwd=3, lty=1, col="darkgreen")
+add.df.covar.line(chosen_model_milli, data=data.frame(Region.Label="MOS"), 
+                  lwd=3, lty=1, col="brown")
+add.df.covar.line(chosen_model_milli, data=data.frame(Region.Label="NOM"), 
+                  lwd=3, lty=1, col="salmon")
+add.df.covar.line(chosen_model_milli, data=data.frame(Region.Label="SSC"), 
+                  lwd=3, lty=1, col="yellow")
+add.df.covar.line(chosen_model_milli, data=data.frame(Region.Label="SSS"), 
+                  lwd=3, lty=1, col="pink")
+legend("topright", legend=c("JYA", "MOA", "MOS", "NOM","SSC","SSS"),
+       lwd=3, lty=1, col=c("blue", "darkgreen", "brown", "salmon","yellow","pink"))
+
+#mean_theta
+#57.65804 
+
+WA_fish.ests_milli <- dht2(ddf=chosen_model_milli, flatfile=WA_dat_distance_milli,
+                     strat_formula = ~Region.Label, convert_units = conversion,
+                     sample_fraction = 57.65804/360,er_est = "P2",stratification = "geographical")
+
+
+WA_fish.ests_milli
+
+#bootstrap confidence interval
+mysummary <- function(ests, fit){
+  return(data.frame(Label = ests$individuals$D$Label,
+                    Dhat = ests$individuals$D$Estimate))
+}
+
+n.cores <- parallel::detectCores()
+daytime.boot.uni.milli <- bootdht(model=chosen_model_milli, flatfile=WA_dat_distance_milli,
+                            resample_transects = TRUE, nboot=500, 
+                            cores = n.cores - 1,
+                            summary_fun=mysummary, sample_fraction = 57.65804/360,
+                            convert_units = conversion)
+
+print(summary(daytime.boot.uni.milli))
+
+daytime.boot.uni.milli %>% group_by(Label) %>% summarise(LCL=quantile(Dhat, probs = c(0.025), na.rm=TRUE),
+                                                   UCL=quantile(Dhat, probs = c(0.975), na.rm=TRUE))
+
+
+
+
+#Pomacentridae:Dischistodus:darwiniensis
+
+WA_dat_distance_disch = WA_dat_distance %>% filter(species == "Pomacentridae:Dischistodus:darwiniensis")
+
+#WA_dat_distance_labridae$species_region = factor(WA_dat_distance_labridae$Region.Label):factor(WA_dat_distance_labridae$species)
+
+WA_dat_distance_disch$object = 1:dim(WA_dat_distance_disch)[1]
+
+#fill in empty videos with NAs
+#read in unique video codes
+
+video_codes <- read.csv("data/video_codes.csv")
+
+for (i in 1:dim(video_codes)[1]){
+  
+  if((video_codes$OpCode[i] %in% WA_dat_distance_disch$Sample.Label)==FALSE){
+    dist_dat_empty = data.frame(Region.Label=video_codes$site_habitat[i],Area=0,
+                                Sample.Label=video_codes$OpCode[i],distance=NA,
+                                Effort=40,species=NA,
+                                object=NA)
+    WA_dat_distance_disch = rbind(WA_dat_distance_disch,dist_dat_empty)
+  }
+}
+
+#start analysing
+
+#View(WA_dat_distance_disch)
+
+hist(WA_dat_distance_disch$distance)
+max(WA_dat_distance_disch$distance,na.rm=T)
+
+
+left_trunc_dat <- read.csv("data/left_trunc_dat.csv")
+
+trunc.list <- list(left=left_trunc_dat$left_trunc[left_trunc_dat$Family_Genus_Species=="Pomacentridae:Dischistodus:darwiniensis"], right=6)
+conversion <- convert_units("Metre", NULL, "Hectare")
+
+WA_dat_distance_disch %>% group_by(Region.Label) %>% summarise(count=sum(distance>0,na.rm=T))
+
+#remove regions with no observations
+WA_dat_distance_disch <- WA_dat_distance_disch %>% filter(Region.Label!="MOS", Region.Label!="NOM",Region.Label!="SSS") 
+
+
+#start model selection
+
+# 
+# uni1 <- ds(WA_dat_distance_disch, transect = "point", key="unif", convert_units = conversion, adjustment = "cos",
+#            nadj=1,formula=~Region.Label,truncation = trunc.list)
+# uni2 <- ds(WA_dat_distance_disch, transect = "point", key="unif", convert_units = conversion, adjustment = "cos",
+#            nadj=2,truncation = trunc.list)
+# uni3 <- ds(WA_dat_distance_disch, transect = "point", key="unif", convert_units = conversion, adjustment = "cos",
+#            nadj=3,truncation = trunc.list)
+# 
+# QAIC(uni1,uni2,uni3)
+#choose uni2
+
+hn0 <- ds(WA_dat_distance_disch, transect = "point", key="hn", convert_units = conversion, adjustment = NULL,
+          formula=~Region.Label,truncation = trunc.list)
+hn1 <- ds(WA_dat_distance_disch, transect = "point", key="hn", convert_units = conversion, adjustment = "cos",
+          nadj=1,formula=~Region.Label,truncation = trunc.list)
+hn2 <- ds(WA_dat_distance_disch, transect = "point", key="hn", convert_units = conversion, adjustment = "cos",
+          nadj=2,formula=~Region.Label,truncation = trunc.list)
+QAIC(hn0,hn1,hn2)
+#choose hn0
+
+hr0 <- ds(WA_dat_distance_disch, transect = "point", key="hr", convert_units = conversion, adjustment = NULL,
+          formula=~Region.Label,truncation = trunc.list)
+hr1 <- ds(WA_dat_distance_disch, transect = "point", key="hr", convert_units = conversion, adjustment = "poly",
+          nadj=1,formula=~Region.Label,truncation = trunc.list)
+
+QAIC(hr0,hr1)
+#choose hr0
+
+#now use c values to choose between the models
+chats <- chi2_select(hn0, hr0)$criteria
+modnames <- unlist(lapply(list(hn0, hr0), function(x) x$ddf$name.message))
+results <- data.frame(modnames, chats)
+results.sort <- results[order(results$chats),]
+results.sort
+
+#choose half normal with no adjustment
+
+chosen_model_disch = hr0
+
+#look at help(QAIC) for paper to cite on model selection method = How et al (2019), also howe et al 2017 from the vingete)
+
+
+summary(chosen_model_disch)
+
+plot(chosen_model_disch, showpoints=FALSE, main="disch\nspecies as covariate")
+add.df.covar.line(chosen_model_disch, data=data.frame(Region.Label="JYA"), 
+                  lwd=3, lty=1, col="blue")
+add.df.covar.line(chosen_model_disch, data=data.frame(Region.Label="MOA"), 
+                  lwd=3, lty=1, col="darkgreen")
+add.df.covar.line(chosen_model_disch, data=data.frame(Region.Label="MOS"), 
+                  lwd=3, lty=1, col="brown")
+add.df.covar.line(chosen_model_disch, data=data.frame(Region.Label="NOM"), 
+                  lwd=3, lty=1, col="salmon")
+add.df.covar.line(chosen_model_disch, data=data.frame(Region.Label="SSC"), 
+                  lwd=3, lty=1, col="yellow")
+add.df.covar.line(chosen_model_disch, data=data.frame(Region.Label="SSS"), 
+                  lwd=3, lty=1, col="pink")
+legend("topright", legend=c("JYA", "MOA", "MOS", "NOM","SSC","SSS"),
+       lwd=3, lty=1, col=c("blue", "darkgreen", "brown", "salmon","yellow","pink"))
+
+#mean_theta
+#57.65804 
+
+WA_fish.ests_disch <- dht2(ddf=chosen_model_disch, flatfile=WA_dat_distance_disch,
+                     strat_formula = ~Region.Label, convert_units = conversion,
+                     sample_fraction = 57.65804/360,er_est = "P2",stratification = "geographical")
+
+
+WA_fish.ests_disch
+
+#bootstrap confidence interval
+mysummary <- function(ests, fit){
+  return(data.frame(Label = ests$individuals$D$Label,
+                    Dhat = ests$individuals$D$Estimate))
+}
+
+n.cores <- parallel::detectCores()
+daytime.boot.uni.disch <- bootdht(model=chosen_model_disch, flatfile=WA_dat_distance_disch,
+                                  resample_transects = TRUE, nboot=500, 
+                                  cores = n.cores - 1,
+                                  summary_fun=mysummary, sample_fraction = 57.65804/360,
+                                  convert_units = conversion)
+
+print(summary(daytime.boot.uni.disch))
+
+daytime.boot.uni.disch %>% group_by(Label) %>% summarise(LCL=quantile(Dhat, probs = c(0.025), na.rm=TRUE),
+                                                         UCL=quantile(Dhat, probs = c(0.975), na.rm=TRUE))
+
+
+
+
+#join the results together
+results_la_ma_di <- rbind(data.frame(WA_fish.ests_labridae),data.frame(WA_fish.ests_milli),data.frame(WA_fish.ests_disch))
+results_la_ma_di$species = rep(c("Labridae:Choerodon:cyanodus",
+                                   "Nemipteridae:Scaevius:milii","Pomacentridae:Dischistodus:darwiniensis"),c(dim(data.frame(WA_fish.ests_labridae))[1],
+                                                                                                                   dim(data.frame(WA_fish.ests_milli))[1],
+                                                                                                                   dim(data.frame(WA_fish.ests_disch))[1]))
+
+
+write.csv(results_la_ma_di,"results/results_la_ma_di.csv")
+
+#combine the plots
+dev.off()
+par(mfrow=c(1,3))
+
+
+png(filename="plots/WA_dist_estimates.png")
+
+plot(chosen_model_labridae, showpoints=FALSE, main="Labridae Choerodon cyanodus",xlab="")
+add.df.covar.line(chosen_model_labridae, data=data.frame(Region.Label="JYA"), 
+                  lwd=3, lty=1, col="blue")
+add.df.covar.line(chosen_model_labridae, data=data.frame(Region.Label="MOA"), 
+                  lwd=3, lty=1, col="darkgreen")
+add.df.covar.line(chosen_model_labridae, data=data.frame(Region.Label="MOS"), 
+                  lwd=3, lty=1, col="brown")
+add.df.covar.line(chosen_model_labridae, data=data.frame(Region.Label="SSC"), 
+                  lwd=3, lty=1, col="yellow")
+# legend("topright", legend=c("JYA", "MOA", "MOS","SSC"),
+#        lwd=3, lty=1, col=c("blue", "darkgreen", "brown", "yellow"))
+
+
+plot(chosen_model_milli, showpoints=FALSE, main="Nemipteridae Scaevius milii",ylab="")
+add.df.covar.line(chosen_model_milli, data=data.frame(Region.Label="MOA"), 
+                  lwd=3, lty=1, col="darkgreen")
+add.df.covar.line(chosen_model_milli, data=data.frame(Region.Label="MOS"), 
+                  lwd=3, lty=1, col="brown")
+ legend("topright", legend=c("JYA", "MOA", "MOS","SSC"),
+        lwd=3, lty=1, col=c("blue", "darkgreen", "brown", "yellow"))
+# 
+
+plot(chosen_model_disch, showpoints=FALSE, main="Pomacentridae Dischistodus species",ylab="",xlab="")
+add.df.covar.line(chosen_model_disch, data=data.frame(Region.Label="JYA"), 
+                  lwd=3, lty=1, col="blue")
+add.df.covar.line(chosen_model_disch, data=data.frame(Region.Label="MOA"), 
+                  lwd=3, lty=1, col="darkgreen")
+add.df.covar.line(chosen_model_disch, data=data.frame(Region.Label="SSC"), 
+                  lwd=3, lty=1, col="yellow")
+# legend("bottom", legend=c("JYA", "MOA", "MOS","SSC"),horiz=T,
+#        lwd=3, lty=1, inset=c(-0.15,0),col=c("blue", "darkgreen", "brown", "yellow"))
+
+
+
+
+dev.off()
+
+par(mfrow=c(1,1))
+
+# Adjust the margins
+par(mar=c(5, 4, 4, 2) + 2,xpd=T)
+
+
+plot(chosen_model_disch, showpoints=FALSE, main="Pomacentridae Dischistodus species",ylab="",xlab="")
+add.df.covar.line(chosen_model_disch, data=data.frame(Region.Label="JYA"), 
+                  lwd=3, lty=1, col="blue")
+add.df.covar.line(chosen_model_disch, data=data.frame(Region.Label="MOA"), 
+                  lwd=3, lty=1, col="darkgreen")
+add.df.covar.line(chosen_model_disch, data=data.frame(Region.Label="SSC"), 
+                  lwd=3, lty=1, col="yellow")
+legend("bottom", legend=c("JYA", "MOA", "MOS","SSC"),horiz=T,
+       lwd=3, lty=1, inset=c(0,-0.5),col=c("blue", "darkgreen", "brown", "yellow"))
+
+png(filename="plots/legend.png")
+
+
+
+

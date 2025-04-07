@@ -1,0 +1,14 @@
+"","Family_Genus_Species","site_habitat","MeanCount","MaxN","SumCount"
+"1","Labridae:Choerodon:cyanodus","JYA",0.65,3.33333333333333,78
+"2","Labridae:Choerodon:cyanodus","MOA",0.98125,4.25,157
+"3","Labridae:Choerodon:cyanodus","MOS",0.233333333333333,2,28
+"4","Labridae:Choerodon:cyanodus","NOM",0.14,1,28
+"5","Labridae:Choerodon:cyanodus","SSC",0.608333333333333,3.33333333333333,73
+"6","Nemipteridae:Scaevius:milii","MOA",0.26875,2,43
+"7","Nemipteridae:Scaevius:milii","MOS",0.5,2.66666666666667,60
+"8","Nemipteridae:Scaevius:milii","NOM",0.005,0.2,1
+"9","Nemipteridae:Scaevius:milii","SSS",0.15,1.5,24
+"10","Pomacentridae:Dischistodus:darwiniensis","JYA",0.0833333333333333,0.333333333333333,10
+"11","Pomacentridae:Dischistodus:darwiniensis","MOA",1.10625,3.5,177
+"12","Pomacentridae:Dischistodus:darwiniensis","SSC",0.241666666666667,2,29
+"13","Pomacentridae:Dischistodus:darwiniensis","SSS",0.01875,0.25,3
